@@ -194,10 +194,10 @@
           "mode": "list",
           "cachedResultName": "ayush130706@gmail.com"
         },
-        "start": "={{ $json.deadlineISO }}\n",
-        "end": "={{ $json.endTime }}\n\n",
+        "start": "={{ $json.deadlineISO }}",
+        "end": "={{ $json.endTime }}",
         "additionalFields": {
-          "summary": "={{ `${$json.person || 'Someone'} - ${$json.task || 'No task provided'}` }}\n\n"
+          "summary": "={{ `${$json.person || 'Someone'} - ${$json.task || 'No task provided'}` }}"
         }
       },
       "type": "n8n-nodes-base.googleCalendar",
