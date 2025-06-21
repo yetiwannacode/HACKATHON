@@ -1,0 +1,436 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "c7f55163-5f7b-4bd5-985a-d51d6ee3b861",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        -1020
+      ],
+      "id": "f5b7deec-8add-4ca2-81c4-cf34373f81c7",
+      "name": "Webhook",
+      "webhookId": "c7f55163-5f7b-4bd5-985a-d51d6ee3b861"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        200,
+        -600
+      ],
+      "id": "3fe08833-05f9-4667-9fad-a57c4854f593",
+      "name": "When chat message received",
+      "webhookId": "72d6ba9c-be24-4a9f-8e4f-3bddfc397718"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a smart meeting assistant. Based on the following transcript, do the following:\n\n1. Summarize the key points discussed (as plain text in a field called `summary`)\n2. Extract all action items as JSON array in a field called `action_items` with keys:\n   - person\n   - task\n   - deadline\n\nReturn only a clean JSON object with keys: summary and action_items\n\nTranscript:  {{ $json.chatInput }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        400,
+        -600
+      ],
+      "id": "60a5a03d-a058-4904-9922-66b8bda2e4d6",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "gistgenie-4o",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+      "typeVersion": 1,
+      "position": [
+        320,
+        -400
+      ],
+      "id": "3551ed24-5457-4511-9c78-3c7832a19b55",
+      "name": "Azure OpenAI Chat Model",
+      "credentials": {
+        "azureOpenAiApi": {
+          "id": "98CQKr3PZYi8y5ag",
+          "name": "Azure Open AI account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        460,
+        -400
+      ],
+      "id": "ba36b0b9-07ab-4981-9bcc-0e239aeab7a6",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "const outputText = $json[\"output\"] || \"\";\nlet summary = \"\";\nlet actionItems = [];\n\ntry {\n  // Extract only the JSON block inside ```json ... ```\n  const match = outputText.match(/```json\\s*([\\s\\S]*?)\\s*```/);\n  if (!match) throw new Error(\"No JSON block found\");\n\n  const parsed = JSON.parse(match[1]);\n  summary = parsed.summary || \"\";\n  actionItems = parsed.actionItems || parsed.action_items || [];\n} catch (err) {\n  console.log(\"❌ JSON Parse Error:\", err);\n  return [];\n}\n\n// ✅ Only first row gets summary, rest have it blank\nreturn actionItems.map((item, index) => ({\n  person: item.person,\n  task: item.task,\n  deadline: item.deadline,\n  summary: index === 0 ? summary : \"\"\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        -600
+      ],
+      "id": "31ae3fe3-8306-4bde-ace4-a2b2eab71f00",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1GS3EdsjKfT4qPzwK0xuav1mNR_YjNyxQX4vuUgDjVh0/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GS3EdsjKfT4qPzwK0xuav1mNR_YjNyxQX4vuUgDjVh0/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Summary": "={{ $json.summary }}",
+            "Person": "={{ $json.person }}",
+            "Task": "={{ $json.task }}",
+            "Deadline": "={{ $json.deadline }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Person",
+              "displayName": "Person",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Task",
+              "displayName": "Task",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Deadline",
+              "displayName": "Deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1360,
+        -720
+      ],
+      "id": "fb621d9b-76b6-4cfa-ad43-b9019db68438",
+      "name": "Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PIA50h2RcSY3wC5N",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(({ json }) => {\n  const deadlineStr = json.deadline;\n  let deadlineISO = \"\";\n\n  try {\n    const date = new Date(deadlineStr + \" 10:00 AM\"); // Add time\n    if (!isNaN(date.getTime())) {\n      deadlineISO = date.toISOString();\n    } else {\n      console.log(\"⚠️ Invalid date:\", deadlineStr);\n    }\n  } catch (e) {\n    console.log(\"⚠️ Date parse error:\", e.message);\n  }\n\n  return {\n    json: {\n      ...json,\n      deadlineISO,\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        -600
+      ],
+      "id": "c5cf4ffd-8bf9-434f-9f75-59fbdc4a91dc",
+      "name": "DATE"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "ayush130706@gmail.com",
+          "mode": "list",
+          "cachedResultName": "ayush130706@gmail.com"
+        },
+        "start": "={{ $json.deadlineISO }}\n",
+        "end": "={{ $json.endTime }}\n\n",
+        "additionalFields": {
+          "summary": "={{ `${$json.person || 'Someone'} - ${$json.task || 'No task provided'}` }}\n\n"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1660,
+        -400
+      ],
+      "id": "f2a5f567-4971-48db-9480-74dbd4bd0485",
+      "name": "Google Calendar",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "Xea8mOyo4mAPbEpb",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet results = [];\n\nfor (const { json } of items) {\n  const people = json.person.split(',').map(p => p.trim());\n  for (const person of people) {\n    results.push({\n      json: {\n        title: json.task,         // This becomes the Google Task title\n        due: json.deadlineISO,    // Due date in ISO format\n        notes: json.summary || \"\",// Optional description\n        person                    // To retain for tracking/debugging\n      }\n    });\n  }\n}\n\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        -580
+      ],
+      "id": "9692641b-e897-47f1-b3f7-f2e542396914",
+      "name": "TASK"
+    },
+    {
+      "parameters": {
+        "task": "MTU5Mjk0OTgxNzY3Njk4OTIzODc6MDow",
+        "title": "={{ $json.title }}: {{ $json.person }}",
+        "additionalFields": {
+          "dueDate": "={{ $json.due}}",
+          "notes": "={{ $json.notes }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleTasks",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        -580
+      ],
+      "id": "2070fa6c-d490-4c03-8178-3c8a85e48ec3",
+      "name": "Google Tasks",
+      "credentials": {
+        "googleTasksOAuth2Api": {
+          "id": "x5rmPbK3Mei4K0Nl",
+          "name": "Google Tasks account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const weekdayMap = {\n  \"Monday\": 1,\n  \"Tuesday\": 2,\n  \"Wednesday\": 3,\n  \"Thursday\": 4,\n  \"Friday\": 5,\n  \"Saturday\": 6,\n  \"Sunday\": 0\n};\n\nconst today = new Date();\nconst result = [];\n\nfor (const item of items) {\n  const deadlineDay = item.json.deadline?.trim();\n  let deadlineDate = new Date();\n  let deadlineISO = \"\";\n  let endTime = \"\";\n\n  if (weekdayMap.hasOwnProperty(deadlineDay)) {\n    const todayDay = today.getDay();\n    const targetDay = weekdayMap[deadlineDay];\n    const daysUntil = (targetDay + 7 - todayDay) % 7 || 7;\n    deadlineDate.setDate(today.getDate() + daysUntil);\n    deadlineDate.setHours(10, 0, 0, 0); // 10:00 AM\n\n    deadlineISO = deadlineDate.toISOString();\n\n    const endDate = new Date(deadlineDate.getTime());\n    endDate.setMinutes(endDate.getMinutes() + 30); // End time = 10:30 AM\n    endTime = endDate.toISOString();\n  } else {\n    // fallback to fixed date\n    deadlineISO = \"2025-06-22T10:00:00.000Z\";\n    endTime = \"2025-06-22T10:30:00.000Z\";\n  }\n\n  result.push({\n    json: {\n      ...item.json,\n      deadlineISO,\n      endTime,\n    }\n  });\n}\n\nreturn result;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1160,
+        -500
+      ],
+      "id": "9a19a8ee-0812-42da-85de-a2afb0067c09",
+      "name": "fixplease"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "58e8b6c6-81dd-4212-9af5-80c6e0b53a95",
+              "leftValue": "={{ $json.deadlineISO }}",
+              "rightValue": "",
+              "operator": {
+                "type": "dateTime",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1380,
+        -500
+      ],
+      "id": "82e4ad4f-26ff-4527-99a1-2377930c21bf",
+      "name": "Filter"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Azure OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "DATE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        []
+      ]
+    },
+    "DATE": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "TASK",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "fixplease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar": {
+      "main": [
+        []
+      ]
+    },
+    "TASK": {
+      "main": [
+        [
+          {
+            "node": "Google Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fixplease": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "69b6cba1-8a38-48dd-984b-44466a1dfc80",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a1681f593b4259f58087149af978461cfe5fa0dc927f0728108288ac77391b23"
+  },
+  "id": "E49PeD0cHSJZjoyi",
+  "tags": []
+}
