@@ -1,0 +1,549 @@
+{
+  "name": "GistGenie_FINAL",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a smart meeting assistant. Based on the following transcript, do the following:\n\n1. Summarize the key points discussed (as plain text in a field called `summary`)\n2. Extract all action items as JSON array in a field called `action_items` with keys:\n   - person\n   - task\n   - deadline\n\nReturn only a clean JSON object with keys: summary and action_items\n\nTranscript:  {{ $json.transcript }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        -860,
+        180
+      ],
+      "id": "570ac11a-72cf-481c-9a92-e3fe1e27a417",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "gistgenie-4o",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -940,
+        380
+      ],
+      "id": "ea181061-b961-43e7-be91-71debbb516f6",
+      "name": "Azure OpenAI Chat Model",
+      "credentials": {
+        "azureOpenAiApi": {
+          "id": "98CQKr3PZYi8y5ag",
+          "name": "Azure Open AI account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=test-session\n\n",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -800,
+        380
+      ],
+      "id": "c478e32e-06eb-45e7-9238-1d2b5714bcc4",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "const outputText = $json[\"output\"] || \"\";\nlet summary = \"\";\nlet actionItems = [];\n\ntry {\n  // Extract only the JSON block inside ```json ... ```\n  const match = outputText.match(/```json\\s*([\\s\\S]*?)\\s*```/);\n  if (!match) throw new Error(\"No JSON block found\");\n\n  const parsed = JSON.parse(match[1]);\n  summary = parsed.summary || \"\";\n  actionItems = parsed.actionItems || parsed.action_items || [];\n} catch (err) {\n  console.log(\"❌ JSON Parse Error:\", err);\n  return [];\n}\n\n// ✅ Only first row gets summary, rest have it blank\nreturn actionItems.map((item, index) => ({\n  person: item.person,\n  task: item.task,\n  deadline: item.deadline,\n  summary: index === 0 ? summary : \"\"\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        180
+      ],
+      "id": "067b733d-e34b-4d96-a138-7eb392bc5b64",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1GS3EdsjKfT4qPzwK0xuav1mNR_YjNyxQX4vuUgDjVh0/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GS3EdsjKfT4qPzwK0xuav1mNR_YjNyxQX4vuUgDjVh0/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Summary": "={{ $json.summary }}",
+            "Person": "={{ $json.person }}",
+            "Task": "={{ $json.task }}",
+            "Deadline": "={{ $json.deadline }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Person",
+              "displayName": "Person",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Task",
+              "displayName": "Task",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Deadline",
+              "displayName": "Deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5f2ab369-8893-4d2b-aeb3-81009b6a43ae",
+      "name": "Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PIA50h2RcSY3wC5N",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(({ json }) => {\n  const deadlineStr = json.deadline;\n  let deadlineISO = \"\";\n\n  try {\n    const date = new Date(deadlineStr + \" 10:00 AM\"); // Add time\n    if (!isNaN(date.getTime())) {\n      deadlineISO = date.toISOString();\n    } else {\n      console.log(\"⚠️ Invalid date:\", deadlineStr);\n    }\n  } catch (e) {\n    console.log(\"⚠️ Date parse error:\", e.message);\n  }\n\n  return {\n    json: {\n      ...json,\n      deadlineISO,\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -280,
+        180
+      ],
+      "id": "9625f13f-2487-4adb-b151-37df34400457",
+      "name": "DATE"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "ayush130706@gmail.com",
+          "mode": "list",
+          "cachedResultName": "ayush130706@gmail.com"
+        },
+        "start": "={{ $json.deadlineISO }}",
+        "end": "={{ $json.endTime }}",
+        "additionalFields": {
+          "summary": "={{ `${$json.person || 'Someone'} - ${$json.task || 'No task provided'}` }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        400,
+        380
+      ],
+      "id": "02665f7d-2fc0-436b-bddb-28e48d1c1c1c",
+      "name": "Google Calendar",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "Xea8mOyo4mAPbEpb",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet results = [];\n\nfor (const { json } of items) {\n  const people = json.person.split(',').map(p => p.trim());\n  for (const person of people) {\n    results.push({\n      json: {\n        title: json.task,         // This becomes the Google Task title\n        due: json.deadlineISO,    // Due date in ISO format\n        notes: json.summary || \"\",// Optional description\n        person                    // To retain for tracking/debugging\n      }\n    });\n  }\n}\n\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        200
+      ],
+      "id": "cb304eb9-66fd-4745-99cd-d821e358c8a8",
+      "name": "TASK"
+    },
+    {
+      "parameters": {
+        "task": "MTU5Mjk0OTgxNzY3Njk4OTIzODc6MDow",
+        "title": "={{ $json.title }}: {{ $json.person }}",
+        "additionalFields": {
+          "dueDate": "={{ $json.due}}",
+          "notes": "={{ $json.notes }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleTasks",
+      "typeVersion": 1,
+      "position": [
+        500,
+        200
+      ],
+      "id": "8834d88b-dc24-4dd6-8d57-18a1fe7386ea",
+      "name": "Google Tasks",
+      "credentials": {
+        "googleTasksOAuth2Api": {
+          "id": "x5rmPbK3Mei4K0Nl",
+          "name": "Google Tasks account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const weekdayMap = {\n  \"Monday\": 1,\n  \"Tuesday\": 2,\n  \"Wednesday\": 3,\n  \"Thursday\": 4,\n  \"Friday\": 5,\n  \"Saturday\": 6,\n  \"Sunday\": 0\n};\n\nconst today = new Date();\nconst result = [];\n\nfor (const item of items) {\n  const deadlineDay = item.json.deadline?.trim();\n  let deadlineDate = new Date();\n  let deadlineISO = \"\";\n  let endTime = \"\";\n\n  if (weekdayMap.hasOwnProperty(deadlineDay)) {\n    const todayDay = today.getDay();\n    const targetDay = weekdayMap[deadlineDay];\n    const daysUntil = (targetDay + 7 - todayDay) % 7 || 7;\n    deadlineDate.setDate(today.getDate() + daysUntil);\n    deadlineDate.setHours(10, 0, 0, 0); // 10:00 AM\n\n    deadlineISO = deadlineDate.toISOString();\n\n    const endDate = new Date(deadlineDate.getTime());\n    endDate.setMinutes(endDate.getMinutes() + 30); // End time = 10:30 AM\n    endTime = endDate.toISOString();\n  } else {\n    // fallback to today 10:00 AM IST\n    const fallbackIST = new Date();\n    fallbackIST.setHours(10, 0, 0, 0); // 10:00 AM IST\n\n    deadlineISO = new Date(fallbackIST.getTime() - (5.5 * 60 * 60 * 1000)).toISOString(); // Convert IST to UTC\n    const endIST = new Date(fallbackIST.getTime() + 30 * 60 * 1000);\n    endTime = new Date(endIST.getTime() - (5.5 * 60 * 60 * 1000)).toISOString(); // 10:30 AM IST in UTC\n  }\n\n  result.push({\n    json: {\n      ...item.json,\n      deadlineISO,\n      endTime,\n    }\n  });\n}\n\nreturn result;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        280
+      ],
+      "id": "881f4ada-d3e6-46f2-870e-f3744f927a45",
+      "name": "fixplease"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "58e8b6c6-81dd-4212-9af5-80c6e0b53a95",
+              "leftValue": "={{ $json.deadlineISO }}",
+              "rightValue": "",
+              "operator": {
+                "type": "dateTime",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        120,
+        280
+      ],
+      "id": "bba46def-0da3-4f79-b0f1-c0e5472462a0",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "jsCode": "const weekdayMap = {\n  \"Monday\": 1,\n  \"Tuesday\": 2,\n  \"Wednesday\": 3,\n  \"Thursday\": 4,\n  \"Friday\": 5,\n  \"Saturday\": 6,\n  \"Sunday\": 0\n};\n\nconst today = new Date();\nconst result = [];\n\nfor (const item of items) {\n  const deadlineDay = item.json.deadline?.trim();\n  let deadlineDate = new Date();\n  let deadlineISO = \"\";\n  let endTime = \"\";\n\n  if (weekdayMap.hasOwnProperty(deadlineDay)) {\n    const todayDay = today.getDay();\n    const targetDay = weekdayMap[deadlineDay];\n    const daysUntil = (targetDay + 7 - todayDay) % 7 || 7;\n    deadlineDate.setDate(today.getDate() + daysUntil);\n    deadlineDate.setHours(10, 0, 0, 0); // 10:00 AM\n\n    deadlineISO = deadlineDate.toISOString();\n\n    const endDate = new Date(deadlineDate.getTime());\n    endDate.setMinutes(endDate.getMinutes() + 30); // End time = 10:30 AM\n    endTime = endDate.toISOString();\n  } else {\n    // fallback to today 10:00 AM IST\n    const fallbackIST = new Date();\n    fallbackIST.setHours(10, 0, 0, 0); // 10:00 AM IST\n\n    deadlineISO = new Date(fallbackIST.getTime() - (5.5 * 60 * 60 * 1000)).toISOString(); // Convert IST to UTC\n    const endIST = new Date(fallbackIST.getTime() + 30 * 60 * 1000);\n    endTime = new Date(endIST.getTime() - (5.5 * 60 * 60 * 1000)).toISOString(); // 10:30 AM IST in UTC\n  }\n\n  result.push({\n    json: {\n      ...item.json,\n      deadlineISO,\n      endTime,\n    }\n  });\n}\n\nreturn result;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20,
+        160
+      ],
+      "id": "b869a6e1-d534-471c-945d-3273efdb39a5",
+      "name": "fixplease1"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1XBWVX7uQSHv0gpdOsB1iuKZATATFrqBA",
+          "mode": "list",
+          "cachedResultName": "Tactiq Transcription",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1XBWVX7uQSHv0gpdOsB1iuKZATATFrqBA"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1820,
+        180
+      ],
+      "id": "c49c7c23-2ddc-4029-ba84-29c91b37e3be",
+      "name": "Google Drive Trigger",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "zvVLkqQ99G63cmXv",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1560,
+        180
+      ],
+      "id": "ee91197e-9e05-4c7d-8591-611c3f720799",
+      "name": "Google Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "zvVLkqQ99G63cmXv",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentURL": "={{ $json.id }}"
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        -1360,
+        180
+      ],
+      "id": "14e7441e-0b2b-4e7f-91d2-b320a7e151f1",
+      "name": "Google Docs",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "sNJKsLfvm9hkt7Hf",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $json.content;\nlet text = \"\";\n\nfor (const block of content) {\n  if (block.paragraph && block.paragraph.elements) {\n    for (const elem of block.paragraph.elements) {\n      if (elem.textRun && elem.textRun.content) {\n        text += elem.textRun.content;\n      }\n    }\n  }\n}\n\nreturn [{ json: { transcript: content.trim() } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1120,
+        180
+      ],
+      "id": "dbd60281-b1e4-4060-8998-3357a749a3d5",
+      "name": "Code1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Azure OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "DATE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DATE": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "fixplease",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "fixplease1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TASK": {
+      "main": [
+        [
+          {
+            "node": "Google Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fixplease": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fixplease1": {
+      "main": [
+        [
+          {
+            "node": "TASK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Google Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Docs": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5f62bd67-29c8-46cf-8f82-eccf89b2149c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a1681f593b4259f58087149af978461cfe5fa0dc927f0728108288ac77391b23"
+  },
+  "id": "PFxHIqo46UWzhX7J",
+  "tags": []
+}
