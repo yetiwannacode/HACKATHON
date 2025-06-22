@@ -1,2 +1,77 @@
-##HACKATHON PROJECT
-please check my above JSON export of the workflow done in n8n.
+# 📄 GistGenie – Automate Meeting Insights & Follow-Ups with AI
+
+GistGenie is a no-code/low-code automation built in **n8n** that turns your Google Meet transcripts into smart summaries, personalized to-do lists, and calendar reminders — all triggered automatically from your Google Drive.
+
+## What It Does
+
+Whenever a transcript file is exported (e.g., from Tactiq) and dropped into your Google Drive:
+
+1. **Trigger**: Google Drive detects the new file.
+2. **Ingest**: The document is retrieved and its raw text is extracted.
+3. **AI Summary**: An AI agent summarizes the meeting and identifies key takeaways and tasks.
+4. **Smart Outputs**:
+   - Saves summaries in Google Sheets
+   - Creates personalized task items in Google Tasks
+   - Schedules follow-up events in Google Calendar
+
+No more post-meeting chaos. Just instant clarity.
+
+## 🛠️ Tech Stack
+
+- **n8n** (workflow orchestration)
+- **Google Drive API** (trigger)
+- **Google Docs API** (content extraction)
+- **OpenAI / Azure OpenAI** (AI-powered summarization)
+- **Google Sheets / Tasks / Calendar** (output integrations)
+
+
+## ⚙️ Setup
+
+### Prerequisites
+
+- n8n instance (self-hosted or cloud)
+- Google API credentials for:
+  - Drive
+  - Docs
+  - Sheets
+  - Tasks
+  - Calendar
+- OpenAI or Azure OpenAI key
+- A folder in Google Drive to collect your Tactiq transcripts
+
+### How to Use
+
+1. Clone this repo.
+2. Import the `gistgenie-workflow.json` into your n8n.
+3. Configure credentials for all Google services and OpenAI.
+4. Specify the folder to monitor in the Google Drive trigger.
+5. Run once manually to test, then activate for full automation.
+
+> Bonus: The AI agent uses memory to keep context, ensuring follow-ups are relevant and smart.
+
+## Example Use Case
+
+Let's say you just had a 30-minute team sync. You export the transcript via Tactiq. GistGenie:
+
+- Creates a bulleted summary
+- Assigns "Design dashboard UI" to Ayush in Google Tasks
+- Sets a Google Calendar reminder for a follow-up on Friday
+
+All in under a minute.
+
+## 📌 Why GistGenie?
+
+Meetings are essential — but follow-ups are painful. GistGenie is your AI-powered assistant that ensures **nothing gets forgotten**.
+
+## Future Enhancements
+
+- Slack or Discord integration for sending summaries
+- Dashboard for viewing summaries and task status
+- Sentiment or tone analysis
+---
+
+##Author
+Ayush Mukherjee
+
+
+
