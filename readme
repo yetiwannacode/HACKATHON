@@ -1,4 +1,4 @@
-# 📄 GistGenie – Automate Meeting Insights & Follow-Ups with AI
+# GistGenie – Automate Meeting Insights & Follow-Ups with AI
 
 GistGenie is a no-code/low-code automation built in **n8n** that turns your Google Meet transcripts into smart summaries, personalized to-do lists, and calendar reminders — all triggered automatically from your Google Drive.
 
@@ -16,7 +16,7 @@ Whenever a transcript file is exported (e.g., from Tactiq) and dropped into your
 
 No more post-meeting chaos. Just instant clarity.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **n8n** (workflow orchestration)
 - **Google Drive API** (trigger)
@@ -25,7 +25,7 @@ No more post-meeting chaos. Just instant clarity.
 - **Google Sheets / Tasks / Calendar** (output integrations)
 
 
-## ⚙️ Setup
+## Setup
 
 ### Prerequisites
 
@@ -59,7 +59,7 @@ Let's say you just had a 30-minute team sync. You export the transcript via Tact
 
 All in under a minute.
 
-## 📌 Why GistGenie?
+## Why GistGenie?
 
 Meetings are essential — but follow-ups are painful. GistGenie is your AI-powered assistant that ensures **nothing gets forgotten**.
 
